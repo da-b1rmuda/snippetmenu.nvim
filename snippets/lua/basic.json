@@ -1,0 +1,8 @@
+{
+  "Print inspect": {
+    "prefix": "piv",
+    "body": ["print(vim.inspect($1))"],
+    "description": "Quick vim.inspect print"
+  }
+}
+
