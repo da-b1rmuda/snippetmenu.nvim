@@ -4,6 +4,51 @@ local config = require("snippet_menu.config")
 
 local M = {}
 
+local function hint_segment(key, label)
+  if not key or key == "" then
+    return nil
+  end
+  return string.format("%s %s", key, label)
+end
+
+local function join_hints(parts)
+  local out = {}
+  for _, p in ipairs(parts) do
+    if p and p ~= "" then
+      table.insert(out, p)
+    end
+  end
+  return table.concat(out, "  •  ")
+end
+
+local function folder_hints()
+  if config.options.show_hints == false then
+    return nil
+  end
+
+  local keys = config.options.keys or {}
+  return join_hints({
+    hint_segment("ESC", "close"),
+    hint_segment(keys.refresh, "refresh"),
+  })
+end
+
+local function snippet_hints()
+  if config.options.show_hints == false then
+    return nil
+  end
+
+  local keys = config.options.keys or {}
+  local back = keys.back_alt or keys.back
+
+  return join_hints({
+    hint_segment("ESC", "close"),
+    hint_segment(back, "back"),
+    hint_segment(keys.refresh, "refresh"),
+    hint_segment(keys.open_split_preview, "preview"),
+  })
+end
+
 local function expand(entry)
   local ls = utils.safe_require("luasnip")
   if not ls then
@@ -130,6 +175,7 @@ local function open_snippets_picker(mods, entries, title_suffix, filter_ft)
   pickers
     .new({}, {
       prompt_title = "Snippets" .. (title_suffix or ""),
+      results_title = snippet_hints(),
 
       finder = finders.new_table({
         results = entries,
@@ -190,6 +236,14 @@ local function open_snippets_picker(mods, entries, title_suffix, filter_ft)
         local back_key = keys.back
         if back_key then
           map({ "i", "n" }, back_key, function()
+            actions.close(prompt_bufnr)
+            M.open()
+          end)
+        end
+
+        local back_alt_key = keys.back_alt
+        if back_alt_key then
+          map({ "i", "n" }, back_alt_key, function()
             actions.close(prompt_bufnr)
             M.open()
           end)
@@ -273,6 +327,7 @@ function M.open()
   mods.pickers
     .new({}, {
       prompt_title = "Snippet folders",
+      results_title = folder_hints(),
 
       finder = mods.finders.new_table({
         results = items,

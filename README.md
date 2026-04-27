@@ -49,8 +49,12 @@
       -- keys = {
       --   refresh = "<C-r>",           -- пересканировать/перечитать сниппеты
       --   back = "<BS>",              -- назад к списку папок (в списке сниппетов)
+      --   back_alt = "x",             -- альтернативная клавиша "назад"
       --   open_split_preview = "<C-p>" -- toggle preview (если доступно)
       -- },
+
+      -- Подсказки по клавишам в заголовке Telescope (например: "ESC close • x back")
+      -- show_hints = true,
     })
   end,
 }
@@ -134,4 +138,3 @@ vscode_loader.lazy_load({
 - В `cmp` нет сниппетов: проверь, что есть `package.json` и вызван `from_vscode.lazy_load({ paths = {...} })`.
 - `:SnippetMenu` не открывается: проверь, что установлен Telescope.
 - Выбор сниппета не вставляет текст: проверь, что установлен LuaSnip.
-

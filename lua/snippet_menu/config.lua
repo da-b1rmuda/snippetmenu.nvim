@@ -11,8 +11,10 @@ M.options = {
   keys = {
     refresh = "<C-r>",
     back = "<BS>",
+    back_alt = "x",
     open_split_preview = "<C-p>",
   },
+  show_hints = true,
 }
 
 function M.setup(opts)
