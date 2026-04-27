@@ -33,6 +33,12 @@
       --   vim.fn.stdpath("config") .. "/snippets",
       --   vim.fn.stdpath("data") .. "/site/snippets",
       -- },
+
+      -- v2: показывать только текущий filetype (и опциональный "all")
+      -- filter_current_ft = true,
+
+      -- v3: preview справа для сниппетов (Telescope previewer)
+      -- preview = true,
     })
   end,
 }
@@ -118,4 +124,3 @@ vscode_loader.lazy_load({
 - В `cmp` нет сниппетов: проверь, что есть `package.json` и вызван `from_vscode.lazy_load({ paths = {...} })`.
 - `:SnippetMenu` не открывается: проверь, что установлен Telescope.
 - Выбор сниппета не вставляет текст: проверь, что установлен LuaSnip.
-

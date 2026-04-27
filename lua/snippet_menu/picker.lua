@@ -25,6 +25,7 @@ local function telescope_modules()
   local actions = utils.safe_require("telescope.actions")
   local action_state = utils.safe_require("telescope.actions.state")
   local telescope_config = utils.safe_require("telescope.config")
+  local previewers = utils.safe_require("telescope.previewers")
 
   if not (pickers and finders and actions and action_state and telescope_config) then
     utils.notify("Telescope is required (missing 'nvim-telescope/telescope.nvim').", vim.log.levels.ERROR)
@@ -37,6 +38,7 @@ local function telescope_modules()
     actions = actions,
     action_state = action_state,
     telescope_config = telescope_config,
+    previewers = previewers,
   }
 end
 
@@ -82,6 +84,48 @@ local function open_snippets_picker(mods, entries, title_suffix)
   local actions = mods.actions
   local action_state = mods.action_state
   local telescope_config = mods.telescope_config
+  local previewers = mods.previewers
+
+  local previewer = nil
+  if config.options.preview and previewers and previewers.new_buffer_previewer then
+    previewer = previewers.new_buffer_previewer({
+      define_preview = function(self, entry)
+        local value = entry and entry.value or nil
+        if not value then
+          return
+        end
+
+        local lines = {
+          string.format("%s", value.name or ""),
+          string.format("filetype: %s", value.filetype or ""),
+          string.format("group:    %s", value.group or ""),
+          string.format("prefix:   %s", (value.prefix and value.prefix ~= "" and value.prefix) or table.concat(value.prefixes or {}, ", ")),
+          string.format("desc:     %s", value.description or ""),
+          "",
+          "----",
+          "",
+        }
+
+        local body_lines = value.body_lines
+        if not body_lines or #body_lines == 0 then
+          body_lines = vim.split(value.body or "", "\n", { plain = true })
+        end
+
+        for _, l in ipairs(body_lines) do
+          table.insert(lines, l)
+        end
+
+        vim.api.nvim_buf_set_lines(self.state.bufnr, 0, -1, false, lines)
+        vim.bo[self.state.bufnr].modifiable = false
+
+        if value.filetype and value.filetype ~= "" then
+          pcall(function()
+            vim.bo[self.state.bufnr].filetype = value.filetype
+          end)
+        end
+      end,
+    })
+  end
 
   pickers
     .new({}, {
@@ -114,6 +158,7 @@ local function open_snippets_picker(mods, entries, title_suffix)
       }),
 
       sorter = telescope_config.values.generic_sorter({}),
+      previewer = previewer,
 
       attach_mappings = function(prompt_bufnr)
         actions.select_default:replace(function()
@@ -157,13 +202,24 @@ function M.open()
 
   local all_entries = loader.collect()
   local items = filetype_items(all_entries)
+  local current_ft = vim.bo.filetype
+
+  if config.options.filter_current_ft and current_ft and current_ft ~= "" then
+    local filtered_items = {}
+    for _, item in ipairs(items) do
+      if item.filetype == current_ft then
+        table.insert(filtered_items, item)
+        break
+      end
+    end
+    items = filtered_items
+  end
 
   if config.options.include_all then
     table.insert(items, 1, { filetype = "__all__", count = #all_entries })
   end
 
   if config.options.include_current_ft then
-    local current_ft = vim.bo.filetype
     if current_ft and current_ft ~= "" then
       for i, item in ipairs(items) do
         if item.filetype == current_ft then
