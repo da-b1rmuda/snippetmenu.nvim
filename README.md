@@ -1,6 +1,10 @@
-# snippet-menu
+# snippetmenu.nvim
 
 Меню сниппетов для Neovim: показывает JSON-сниппеты в Telescope и разворачивает выбранный через LuaSnip.
+
+<p align="center">
+  <img src="./assets/demo.gif" width="700" />
+</p>
 
 ## Как пользоваться
 
