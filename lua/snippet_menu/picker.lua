@@ -1,5 +1,6 @@
 local loader = require("snippet_menu.loader")
 local utils = require("snippet_menu.utils")
+local config = require("snippet_menu.config")
 
 local M = {}
 
@@ -18,7 +19,7 @@ local function expand(entry)
   ls.lsp_expand(entry.body)
 end
 
-function M.open()
+local function telescope_modules()
   local pickers = utils.safe_require("telescope.pickers")
   local finders = utils.safe_require("telescope.finders")
   local actions = utils.safe_require("telescope.actions")
@@ -27,15 +28,67 @@ function M.open()
 
   if not (pickers and finders and actions and action_state and telescope_config) then
     utils.notify("Telescope is required (missing 'nvim-telescope/telescope.nvim').", vim.log.levels.ERROR)
-    return
+    return nil
   end
+
+  return {
+    pickers = pickers,
+    finders = finders,
+    actions = actions,
+    action_state = action_state,
+    telescope_config = telescope_config,
+  }
+end
+
+local function get_icon_for_filetype(filetype)
+  local devicons = utils.safe_require("nvim-web-devicons")
+  if not devicons then
+    return ""
+  end
+
+  if devicons.get_icon_by_filetype then
+    local icon = devicons.get_icon_by_filetype(filetype, { default = true })
+    if icon then
+      return icon .. " "
+    end
+  end
+
+  local ext_by_ft = {
+    lua = "lua",
+    python = "py",
+    javascript = "js",
+    javascriptreact = "jsx",
+    typescript = "ts",
+    typescriptreact = "tsx",
+    json = "json",
+    html = "html",
+    css = "css",
+    sh = "sh",
+    bash = "sh",
+  }
+
+  local ext = ext_by_ft[filetype] or "txt"
+  local icon = devicons.get_icon("file." .. ext, ext, { default = true })
+  if icon then
+    return icon .. " "
+  end
+
+  return ""
+end
+
+local function open_snippets_picker(mods, entries, title_suffix)
+  local pickers = mods.pickers
+  local finders = mods.finders
+  local actions = mods.actions
+  local action_state = mods.action_state
+  local telescope_config = mods.telescope_config
 
   pickers
     .new({}, {
-      prompt_title = "Snippets",
+      prompt_title = "Snippets" .. (title_suffix or ""),
 
       finder = finders.new_table({
-        results = loader.collect(),
+        results = entries,
 
         entry_maker = function(entry)
           local prefix = entry.prefix
@@ -48,7 +101,7 @@ function M.open()
 
           return {
             value = entry,
-            display = string.format("[%s/%s] %s -> %s", entry.filetype, entry.group, prefix, entry.name),
+            display = string.format("[%s] %s -> %s", entry.group, prefix, entry.name),
             ordinal = table.concat({
               entry.filetype,
               entry.group,
@@ -67,6 +120,103 @@ function M.open()
           local selection = action_state.get_selected_entry()
           actions.close(prompt_bufnr)
           expand(selection.value)
+        end)
+
+        return true
+      end,
+    })
+    :find()
+end
+
+local function filetype_items(entries)
+  local counts = {}
+  for _, e in ipairs(entries) do
+    local ft = e.filetype or ""
+    if ft ~= "" then
+      counts[ft] = (counts[ft] or 0) + 1
+    end
+  end
+
+  local items = {}
+  for ft, count in pairs(counts) do
+    table.insert(items, { filetype = ft, count = count })
+  end
+
+  table.sort(items, function(a, b)
+    return a.filetype < b.filetype
+  end)
+
+  return items
+end
+
+function M.open()
+  local mods = telescope_modules()
+  if not mods then
+    return
+  end
+
+  local all_entries = loader.collect()
+  local items = filetype_items(all_entries)
+
+  if config.options.include_all then
+    table.insert(items, 1, { filetype = "__all__", count = #all_entries })
+  end
+
+  if config.options.include_current_ft then
+    local current_ft = vim.bo.filetype
+    if current_ft and current_ft ~= "" then
+      for i, item in ipairs(items) do
+        if item.filetype == current_ft then
+          table.remove(items, i)
+          table.insert(items, 1, item)
+          break
+        end
+      end
+    end
+  end
+
+  mods.pickers
+    .new({}, {
+      prompt_title = "Snippet folders",
+
+      finder = mods.finders.new_table({
+        results = items,
+
+        entry_maker = function(item)
+          local ft = item.filetype
+          local is_all = ft == "__all__"
+          local label = is_all and "all" or ft
+          local icon = is_all and "󰒲 " or get_icon_for_filetype(ft)
+
+          return {
+            value = item,
+            display = string.format("%s%s (%d)", icon, label, item.count or 0),
+            ordinal = label,
+          }
+        end,
+      }),
+
+      sorter = mods.telescope_config.values.generic_sorter({}),
+
+      attach_mappings = function(prompt_bufnr)
+        mods.actions.select_default:replace(function()
+          local selection = mods.action_state.get_selected_entry()
+          mods.actions.close(prompt_bufnr)
+
+          local item = selection.value
+          if item.filetype == "__all__" then
+            open_snippets_picker(mods, all_entries, " (all)")
+            return
+          end
+
+          local filtered = {}
+          for _, e in ipairs(all_entries) do
+            if e.filetype == item.filetype then
+              table.insert(filtered, e)
+            end
+          end
+
+          open_snippets_picker(mods, filtered, " (" .. item.filetype .. ")")
         end)
 
         return true
