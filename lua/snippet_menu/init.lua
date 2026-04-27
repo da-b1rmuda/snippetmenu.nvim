@@ -2,6 +2,7 @@ local M = {}
 
 function M.setup(opts)
   require("snippet_menu.config").setup(opts)
+  require("snippet_menu.loader").setup()
 end
 
 function M.open()

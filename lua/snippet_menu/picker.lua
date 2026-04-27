@@ -78,7 +78,7 @@ local function get_icon_for_filetype(filetype)
   return ""
 end
 
-local function open_snippets_picker(mods, entries, title_suffix)
+local function open_snippets_picker(mods, entries, title_suffix, filter_ft)
   local pickers = mods.pickers
   local finders = mods.finders
   local actions = mods.actions
@@ -143,9 +143,11 @@ local function open_snippets_picker(mods, entries, title_suffix)
             prefix = "(no prefix)"
           end
 
+          local icon = get_icon_for_filetype(entry.filetype)
+
           return {
             value = entry,
-            display = string.format("[%s] %s -> %s", entry.group, prefix, entry.name),
+            display = string.format("%s[%s] %s -> %s", icon, entry.group, prefix, entry.name),
             ordinal = table.concat({
               entry.filetype,
               entry.group,
@@ -160,7 +162,44 @@ local function open_snippets_picker(mods, entries, title_suffix)
       sorter = telescope_config.values.generic_sorter({}),
       previewer = previewer,
 
-      attach_mappings = function(prompt_bufnr)
+      attach_mappings = function(prompt_bufnr, map)
+        local keys = config.options.keys or {}
+        local layout_actions = utils.safe_require("telescope.actions.layout")
+
+        local refresh_key = keys.refresh
+        if refresh_key then
+          map({ "i", "n" }, refresh_key, function()
+            require("snippet_menu.loader").invalidate()
+            actions.close(prompt_bufnr)
+
+            local all = require("snippet_menu.loader").collect()
+            local refreshed = all
+            if filter_ft and filter_ft ~= "" then
+              refreshed = {}
+              for _, e in ipairs(all) do
+                if e.filetype == filter_ft then
+                  table.insert(refreshed, e)
+                end
+              end
+            end
+
+            open_snippets_picker(mods, refreshed, title_suffix, filter_ft)
+          end)
+        end
+
+        local back_key = keys.back
+        if back_key then
+          map({ "i", "n" }, back_key, function()
+            actions.close(prompt_bufnr)
+            M.open()
+          end)
+        end
+
+        local toggle_preview_key = keys.open_split_preview
+        if toggle_preview_key and layout_actions and layout_actions.toggle_preview then
+          map({ "i", "n" }, toggle_preview_key, layout_actions.toggle_preview)
+        end
+
         actions.select_default:replace(function()
           local selection = action_state.get_selected_entry()
           actions.close(prompt_bufnr)
@@ -254,14 +293,25 @@ function M.open()
 
       sorter = mods.telescope_config.values.generic_sorter({}),
 
-      attach_mappings = function(prompt_bufnr)
+      attach_mappings = function(prompt_bufnr, map)
+        local keys = config.options.keys or {}
+
+        local refresh_key = keys.refresh
+        if refresh_key then
+          map({ "i", "n" }, refresh_key, function()
+            require("snippet_menu.loader").invalidate()
+            mods.actions.close(prompt_bufnr)
+            M.open()
+          end)
+        end
+
         mods.actions.select_default:replace(function()
           local selection = mods.action_state.get_selected_entry()
           mods.actions.close(prompt_bufnr)
 
           local item = selection.value
           if item.filetype == "__all__" then
-            open_snippets_picker(mods, all_entries, " (all)")
+            open_snippets_picker(mods, all_entries, " (all)", nil)
             return
           end
 
@@ -272,7 +322,7 @@ function M.open()
             end
           end
 
-          open_snippets_picker(mods, filtered, " (" .. item.filetype .. ")")
+          open_snippets_picker(mods, filtered, " (" .. item.filetype .. ")", item.filetype)
         end)
 
         return true

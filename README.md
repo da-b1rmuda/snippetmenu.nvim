@@ -2,17 +2,18 @@
 
 Меню сниппетов для Neovim: показывает JSON-сниппеты в Telescope и разворачивает выбранный через LuaSnip.
 
-## Возможности (v1)
+## Как пользоваться
 
-- Чтение VS Code-style JSON сниппетов (`*.json`)
-- Telescope picker: `:SnippetMenu`
-- Expand через LuaSnip (`ls.lsp_expand(...)`)
+1) Положи сниппеты в `snippets_dir` (структура ниже).
+2) Открой меню: `:SnippetMenu`.
+3) Выбери папку (filetype) -> сниппет -> Enter.
 
 ## Требования
 
 - Neovim 0.9+
 - `nvim-telescope/telescope.nvim`
 - `L3MON4D3/LuaSnip`
+- (опционально) `nvim-tree/nvim-web-devicons` для иконок filetype
 
 ## Установка (lazy.nvim)
 
@@ -34,19 +35,26 @@
       --   vim.fn.stdpath("data") .. "/site/snippets",
       -- },
 
-      -- v2: показывать только текущий filetype (и опциональный "all")
+      -- Показывать только текущий filetype (и опциональный "all")
       -- filter_current_ft = true,
 
-      -- v3: preview справа для сниппетов (Telescope previewer)
+      -- Preview справа для сниппетов (Telescope previewer)
       -- preview = true,
+
+      -- Кэш: ускоряет открытие (не парсит все JSON каждый раз)
+      -- cache = true,
+      -- cache_autocmd = true, -- инвалидировать кэш при сохранении *.json внутри snippets_dir
+
+      -- Быстрые клавиши внутри Telescope (можно переопределить или отключить)
+      -- keys = {
+      --   refresh = "<C-r>",           -- пересканировать/перечитать сниппеты
+      --   back = "<BS>",              -- назад к списку папок (в списке сниппетов)
+      --   open_split_preview = "<C-p>" -- toggle preview (если доступно)
+      -- },
     })
   end,
 }
 ```
-
-## Использование
-
-- Открыть меню: `:SnippetMenu`
 
 ## Структура сниппетов
 
@@ -80,6 +88,7 @@
 
 Важно: `snippet-menu` - это меню (Telescope).
 Чтобы сниппеты были в `nvim-cmp`, их должен загрузить LuaSnip loader.
+Сам `snippet-menu` читает `*.json` напрямую и не требует `package.json`.
 
 ### 1) Добавь `package.json` рядом со сниппетами
 
@@ -113,7 +122,8 @@ vscode_loader.lazy_load()
 
 -- Твои JSON сниппеты (где лежит package.json)
 vscode_loader.lazy_load({
-  paths = { vim.fn.stdpath("config") .. "/lua/snippets" },
+  -- Укажи путь к папке, где лежит package.json (обычно это твой snippets_dir)
+  paths = { vim.fn.stdpath("config") .. "/snippets" },
 })
 ```
 
@@ -124,3 +134,4 @@ vscode_loader.lazy_load({
 - В `cmp` нет сниппетов: проверь, что есть `package.json` и вызван `from_vscode.lazy_load({ paths = {...} })`.
 - `:SnippetMenu` не открывается: проверь, что установлен Telescope.
 - Выбор сниппета не вставляет текст: проверь, что установлен LuaSnip.
+

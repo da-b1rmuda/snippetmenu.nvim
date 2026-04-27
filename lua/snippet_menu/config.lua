@@ -4,10 +4,15 @@ M.options = {
   snippets_dir = vim.fn.stdpath("config") .. "/snippets",
   include_current_ft = true,
   include_all = true,
-  -- v2: when true, show only current buffer filetype (and optional "all")
   filter_current_ft = false,
-  -- v3: Telescope preview panel on the right for snippet items
   preview = true,
+  cache = true,
+  cache_autocmd = true,
+  keys = {
+    refresh = "<C-r>",
+    back = "<BS>",
+    open_split_preview = "<C-p>",
+  },
 }
 
 function M.setup(opts)
